@@ -3,7 +3,9 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <MemoryFree.h>
 #include "everytime.h"
+#include <GyverOLED.h>
 
 #define SCREEN_WIDTH 128    // OLED display width, in pixels
 #define SCREEN_HEIGHT 64    // OLED display height, in pixels
@@ -15,24 +17,25 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 SGP30 mySensor; // create an object of the SGP30 class
 
+// если нашелся датчик
 bool sgp30_connected = false;
 
-uint16_t current_co2 = 0;
-uint16_t current_tvoc = 0;
+// Тип выводимых данных
+uint8_t display_sensor_type = _CO2E;
 
-/// @brief Read measures. Call every 1 second (exact)
+uint8_t show_count = 0;
+
+// Read measures. Call every 1 second (exact)
 void update_current_measures()
 {
     if (sgp30_connected)
     {
         mySensor.measureAirQuality();
-        current_co2 = mySensor.CO2;
-        current_tvoc = mySensor.TVOC;
+        add_new_measure(mySensor.CO2, mySensor.TVOC);
     }
     else
     {
-        current_co2 = fake_measure(0);
-        current_tvoc = fake_measure(1);
+        add_new_measure(fake_measure(_CO2E), fake_measure(_TVOC));
     }
 }
 
@@ -49,6 +52,7 @@ void setup()
             ; // Don't proceed, loop forever
     }
     display.clearDisplay();
+    init_measures();
 
     // Initialize sensor
     if (mySensor.begin() == false)
@@ -73,15 +77,9 @@ void setup()
     {
         mySensor.initAirQuality();
         delay(1000); // Wait 1 second
-        update_current_measures();
-        co2_max = current_co2;
-    }
-    else
-    {
-        co2_max = fake_measure(0);
     }
 
-    init_measures();
+    update_current_measures();
 }
 
 void print_big_measures()
@@ -90,7 +88,7 @@ void print_big_measures()
     display.setTextSize(2);
     display.setTextColor(WHITE);
     display.print("CO2:");
-    display.print(current_co2);
+    display.print(measures[_CO2E].current);
     display.setTextSize(1);
     display.print("ppm");
 
@@ -98,7 +96,7 @@ void print_big_measures()
     display.setTextSize(2);
     display.setTextColor(WHITE);
     display.print("TVOC:");
-    display.print(current_tvoc);
+    display.print(measures[_TVOC].current);
     display.setTextSize(1);
     display.print("ppb");
 }
@@ -107,20 +105,35 @@ void print_small_measures()
 {
     display.setTextSize(1);
     display.setCursor(102, 3); // oled display
-    display.setTextColor(BLACK, WHITE);
+    if (display_sensor_type == _CO2E)
+    {
+        display.setTextColor(BLACK, WHITE);
+    }
+    else
+    {
+        display.setTextColor(WHITE, BLACK);
+    }
     display.print("CO2e");
     display.setTextColor(WHITE, BLACK);
     display.setCursor(102, 3 + 9); // oled display
-    display.print(current_co2);
+    display.print(measures[_CO2E].current);
     display.setCursor(102, 3 + 9 + 9); // oled display
     display.print("ppm");
 
     display.setCursor(0, 40);   // oled display
     display.setCursor(102, 34); // oled display
-    display.setTextColor(WHITE, BLACK);
+    if (display_sensor_type == _TVOC)
+    {
+        display.setTextColor(BLACK, WHITE);
+    }
+    else
+    {
+        display.setTextColor(WHITE, BLACK);
+    }
     display.print("TVOC");
+    display.setTextColor(WHITE, BLACK);
     display.setCursor(102, 34 + 9); // oled display
-    display.print(current_tvoc);
+    display.print(measures[_TVOC].current);
     display.setCursor(102, 34 + 9 + 9); // oled display
     display.print("ppb");
 }
@@ -128,7 +141,7 @@ void print_small_measures()
 void draw_bars()
 {
     uint16_t h = display.height() - 1;
-    for (uint8_t i = 0; i < MAX_SAMPLES; i++)
+    for (uint8_t i = 0; i < MAX_MEASURES; i++)
     {
         if (samples[i] > 0)
         {
@@ -140,9 +153,9 @@ void draw_bars()
     display.setTextSize(1);
     display.setTextColor(WHITE, BLACK);
     display.setCursor(2, 2); // oled display
-    display.print(measure_max);
+    display.print(measures[display_sensor_type].max);
     display.setCursor(2, display.height() - 1 - 9); // oled display
-    display.print(measure_min);
+    display.print(measures[display_sensor_type].min);
 
     display.drawRect(0, 0, 101, display.height(), SSD1306_WHITE);
     display.drawRect(100, 0, 27, display.height(), SSD1306_WHITE);
@@ -155,24 +168,28 @@ void loop()
         // First fifteen readings will be
         // CO2: 400 ppm  TVOC: 0 ppb
         update_current_measures();
-        Serial.print("CO2: ");
-        Serial.print(current_co2);
-        Serial.print(" ppm\tTVOC: ");
-        Serial.print(current_tvoc);
-        Serial.println(" ppb");
         print_small_measures();
         display.display();
-        co2_max = (current_co2 > co2_max) ? current_co2 : co2_max;
     }
 
     EVERY_N_SECONDS(3)
     {
-        add_new_measure(co2_max);
-        co2_max = current_co2;
-        //    add_new_measure(mySensor.CO2);
+        Serial.println(freeMemory());
+        update_measure_data();
+        prepare_display_samples(display_sensor_type);
         display.clearDisplay();
         print_small_measures();
         draw_bars();
         display.display();
+
+        // if (show_count = 5)
+        // {
+        //     display_sensor_type = (display_sensor_type + 1) % 2;
+        //     show_count = 0;
+        // }
+        // else
+        // {
+        //     show_count++;
+        // }
     }
 }
