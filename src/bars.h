@@ -20,8 +20,10 @@ struct SensorsMeasures
     // текущее значение
     uint16_t current;
 
-    // для входных значений, они потом усредняются
+    // текущее значение current усреднится с input
+    // потом это значение попадет в data
     uint16_t input;
+
     uint16_t reserved1;
     // измерения от датчика
     uint16_t data[TOTAL_MEASURES];

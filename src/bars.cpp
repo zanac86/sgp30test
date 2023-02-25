@@ -38,18 +38,22 @@ void update_measure_data()
 
 void add_new_measure(uint16_t measure_co2, uint16_t measure_tvoc)
 {
-    // от датчика должны быть >=400
+    // от датчика co2e должны быть >=400
     uint16_t c = (measure_co2 < 400) ? 400 : measure_co2;
-    // от датчика могут быть 0 и больше, но 0 выкидываем
-    uint16_t t = (measure_tvoc==0)?1:measure_tvoc;
+    // от датчика tvoc могут быть 0 и больше, но 0 выкидываем
+    uint16_t t = (measure_tvoc == 0) ? 1 : measure_tvoc;
 
-    measures[_CO2E].current = (c > 9999) ? 9999 : c;
-    measures[_TVOC].current = (t > 9999) ? 9999 : t;
-    // uint16_t c = (measures[_CO2E].input >> 1) + (measures[_CO2E].current >> 1);
-    // uint16_t t = (measures[_TVOC].input >> 1) + (measures[_TVOC].current >> 1);
+    c = (c > 9999) ? 9999 : c;
+    t = (t > 9999) ? 9999 : t;
 
-    measures[_CO2E].input = (c > 9999) ? 9999 : c;
-    measures[_TVOC].input = (t > 9999) ? 9999 : t;
+    measures[_CO2E].current = c;
+    measures[_TVOC].current = t;
+
+    measures[_CO2E].input = (measures[_CO2E].input >> 1) + (c >> 1);
+    measures[_TVOC].input = (measures[_TVOC].input >> 1) + (t >> 1);
+
+    // measures[_CO2E].input = (c > 9999) ? 9999 : c;
+    // measures[_TVOC].input = (t > 9999) ? 9999 : t;
 }
 
 void prepare_display_samples(uint8_t x)
@@ -60,16 +64,12 @@ void prepare_display_samples(uint8_t x)
     for (uint8_t i = 0; i < TOTAL_MEASURES; i++)
     {
         uint16_t a = measures[x].data[i];
-        // Serial.print(a);
-        // Serial.print(".");
         if (a > 0)
         {
             mx = (a > mx) ? a : mx;
             mn = (a < mn) ? a : mn;
         }
     }
-    // Serial.println(".");
-
     if (x == _CO2E)
     {
         // в co2 нет значений < 400

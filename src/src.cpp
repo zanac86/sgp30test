@@ -18,11 +18,23 @@ bool sgp30_connected = false;
 // Тип выводимых данных
 uint8_t display_sensor_type = _CO2E;
 
-uint8_t show_count = 0;
-
+// Вывод крупных цифр или графика
 #define DISPLAY_PLOT 0
 #define DISPLAY_SENS 1
 uint8_t display_mode = DISPLAY_PLOT;
+
+// читать датчик каждую секунду (написано, что так ему лучше)
+#define INTERVAL_READ_SENSOR 1
+// обновить данные для графиков, там 50 значений
+// если записывать через 30 секунд, то на экране будет 25 минут
+#define INTERVAL_UPDATE_MEASURES 3
+// Переключать график CO2 или TVOC
+#define INTERVAL_CHANGE_PLOT 20
+// Выводить график или большие цифры
+#define INTERVAL_CHANGE_DISPLAY 10
+
+// обновить весь экран при переключении на график
+bool need_update_plot = false;
 
 // Read measures. Call every 1 second (exact)
 void update_current_measures_every_1s()
@@ -36,6 +48,12 @@ void update_current_measures_every_1s()
     {
         add_new_measure(fake_measure(_CO2E), fake_measure(_TVOC));
     }
+    char s[50];
+    sprintf(s, "%lu CO2=%u TVOC=%u",
+            millis(),
+            measures[_CO2E].current,
+            measures[_TVOC].current);
+    Serial.println(s);
 }
 
 void setup()
@@ -151,7 +169,7 @@ void draw_bars()
 
 void loop()
 {
-    EVERY_N_SECONDS(1)
+    EVERY_N_SECONDS(INTERVAL_READ_SENSOR)
     {
         // First fifteen readings will be
         // CO2: 400 ppm  TVOC: 0 ppb
@@ -159,6 +177,7 @@ void loop()
         if (display_mode == DISPLAY_PLOT)
         {
             print_small_measures();
+            oled.update();
         }
         if (display_mode == DISPLAY_SENS)
         {
@@ -166,35 +185,32 @@ void loop()
             print_big_measures();
             oled.update();
         }
-        oled.update();
     }
 
-    EVERY_N_SECONDS(10)
+    EVERY_N_SECONDS(INTERVAL_CHANGE_DISPLAY)
     {
         display_mode = (display_mode == DISPLAY_PLOT) ? DISPLAY_SENS : DISPLAY_PLOT;
+        need_update_plot = (display_mode == DISPLAY_PLOT);
     }
 
-    EVERY_N_SECONDS(3)
+    EVERY_N_SECONDS(INTERVAL_CHANGE_PLOT)
     {
-        if (show_count == 4)
-        {
-            display_sensor_type = (display_sensor_type == _CO2E) ? _TVOC : _CO2E;
-            show_count = 0;
-        }
-        else
-        {
-            show_count++;
-        }
-
-        if (display_mode == DISPLAY_PLOT)
-        {
-            update_measure_data();
-            prepare_display_samples(display_sensor_type);
-            oled.clear();
-            print_small_measures();
-            draw_bars();
-            oled.update();
-        }
+        display_sensor_type = (display_sensor_type == _CO2E) ? _TVOC : _CO2E;
     }
 
+    EVERY_N_SECONDS(INTERVAL_UPDATE_MEASURES)
+    {
+        update_measure_data();
+        need_update_plot = (display_mode == DISPLAY_PLOT);
+    }
+
+    if (need_update_plot)
+    {
+        prepare_display_samples(display_sensor_type);
+        oled.clear();
+        print_small_measures();
+        draw_bars();
+        oled.update();
+        need_update_plot = false;
+    }
 }
