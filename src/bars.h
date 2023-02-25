@@ -6,7 +6,7 @@
 
 // на экране 50 отсчетов через пиксель - всего 100 пикселей
 // отсчеты через 60 секунд, всего 50 минут
-#define MAX_MEASURES 48
+#define TOTAL_MEASURES 50
 
 struct SensorsMeasures
 {
@@ -24,7 +24,7 @@ struct SensorsMeasures
     uint16_t input;
     uint16_t reserved1;
     // измерения от датчика
-    uint16_t data[MAX_MEASURES];
+    uint16_t data[TOTAL_MEASURES];
 };
 
 #define _CO2E 0
@@ -33,7 +33,7 @@ struct SensorsMeasures
 // Данные измерений для главного модуля
 extern SensorsMeasures measures[2];
 // данные для графика
-extern uint8_t samples[MAX_MEASURES];
+extern uint8_t samples[TOTAL_MEASURES];
 
 // инициализация массивов и переменных
 void init_measures();

@@ -3,13 +3,13 @@
 SensorsMeasures measures[2];
 
 // данные для графика
-uint8_t samples[MAX_MEASURES];
+uint8_t samples[TOTAL_MEASURES];
 
 void init_measures()
 {
     for (uint8_t x = 0; x < 2; x++)
     {
-        for (uint8_t i = 0; i < MAX_MEASURES; i++)
+        for (uint8_t i = 0; i < TOTAL_MEASURES; i++)
         {
             measures[x].data[i] = 0;
         }
@@ -20,7 +20,7 @@ void init_measures()
         measures[x].current = 0;
     }
 
-    for (uint8_t i = 0; i < MAX_MEASURES; i++)
+    for (uint8_t i = 0; i < TOTAL_MEASURES; i++)
     {
         samples[i] = 0;
     }
@@ -32,19 +32,21 @@ void update_measure_data()
     {
         uint8_t i = measures[x].data_index;
         measures[x].data[i] = measures[x].input;
-        measures[x].data_index = (i + 1) % MAX_MEASURES;
+        measures[x].data_index = (i + 1) % TOTAL_MEASURES;
     }
 }
 
 void add_new_measure(uint16_t measure_co2, uint16_t measure_tvoc)
 {
-    measures[_CO2E].current = (measure_co2 > 9999) ? 9999 : measure_co2;
-    measures[_TVOC].current = (measure_tvoc > 9999) ? 9999 : measure_tvoc;
+    // от датчика должны быть >=400
+    uint16_t c = (measure_co2 < 400) ? 400 : measure_co2;
+    // от датчика могут быть 0 и больше, но 0 выкидываем
+    uint16_t t = (measure_tvoc==0)?1:measure_tvoc;
+
+    measures[_CO2E].current = (c > 9999) ? 9999 : c;
+    measures[_TVOC].current = (t > 9999) ? 9999 : t;
     // uint16_t c = (measures[_CO2E].input >> 1) + (measures[_CO2E].current >> 1);
     // uint16_t t = (measures[_TVOC].input >> 1) + (measures[_TVOC].current >> 1);
-
-    uint16_t c = measure_co2;
-    uint16_t t = measure_tvoc;
 
     measures[_CO2E].input = (c > 9999) ? 9999 : c;
     measures[_TVOC].input = (t > 9999) ? 9999 : t;
@@ -55,20 +57,33 @@ void prepare_display_samples(uint8_t x)
     uint16_t mn = measures[x].data[0];
     uint16_t mx = measures[x].data[0];
     uint16_t H = 60;
-    for (uint8_t i = 0; i < MAX_MEASURES; i++)
+    for (uint8_t i = 0; i < TOTAL_MEASURES; i++)
     {
         uint16_t a = measures[x].data[i];
+        // Serial.print(a);
+        // Serial.print(".");
         if (a > 0)
         {
             mx = (a > mx) ? a : mx;
             mn = (a < mn) ? a : mn;
         }
     }
+    // Serial.println(".");
 
-    mx = ((mx / 100) + 1) * 100;
-    if (mn < 500)
+    if (x == _CO2E)
     {
-        mn = 400;
+        // в co2 нет значений < 400
+
+        mn = (mn < 600) ? 400 : mn;
+        // окгруление до большей сотни
+        mx = ((mx / 100) + 1) * 100;
+    }
+
+    if (x == _TVOC)
+    {
+        // окгруление до большей сотни
+        mx = ((mx / 100) + 1) * 100;
+        mn = (mn < 200) ? 0 : 100;
     }
 
     measures[x].min = mn;
@@ -86,7 +101,7 @@ void prepare_display_samples(uint8_t x)
 
     uint8_t sample_index = 0;
 
-    for (uint8_t i = measures[x].data_index; i < MAX_MEASURES; i++)
+    for (uint8_t i = measures[x].data_index; i < TOTAL_MEASURES; i++)
     {
         if (measures[x].data[i] == 0)
         {
@@ -118,11 +133,11 @@ uint16_t fake_measure(uint8_t sensor_type)
 {
     if (sensor_type == _CO2E)
     {
-        return random(400, 600);
+        return random(400, 1600);
     }
     if (sensor_type == _TVOC)
     {
-        return random(0, 100);
+        return random(0, 1200);
     }
     return 0;
 }
