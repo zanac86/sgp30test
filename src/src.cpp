@@ -5,7 +5,7 @@
 #include "bars.h"
 
 // дефайн перед подключением либы - использовать microWire (лёгкая либа для I2C)
-// #define USE_MICRO_WIRE
+//  #define USE_MICRO_WIRE
 #include <GyverOLED.h>
 
 GyverOLED<SSD1306_128x64, OLED_BUFFER> oled;
@@ -34,7 +34,7 @@ uint8_t display_mode = DISPLAY_PLOT;
 #define INTERVAL_CHANGE_DISPLAY 10
 
 // обновить весь экран при переключении на график
-bool need_update_plot = false;
+bool need_update_plot = true;
 
 // Read measures. Call every 1 second (exact)
 void update_current_measures_every_1s()
@@ -101,20 +101,20 @@ void print_big_measures()
     oled.setCursorXY(0, 10); // oled display
     oled.setScale(2);
     oled.invertText(false);
-    oled.print("CO2:");
+    oled.print(F("CO2: "));
     sprintf(s, "%4u", measures[_CO2E].current);
     oled.print(s);
     oled.setScale(1);
-    oled.print("ppm");
+    oled.print(F("ppm"));
 
     oled.setCursorXY(0, 40); // oled display
     oled.setScale(2);
     oled.invertText(false);
-    oled.print("TVOC:");
+    oled.print(F("TVOC:"));
     sprintf(s, "%4u", measures[_TVOC].current);
     oled.print(s);
     oled.setScale(1);
-    oled.print("ppb");
+    oled.print(F("ppb"));
 }
 
 void print_small_measures()
@@ -124,23 +124,23 @@ void print_small_measures()
     oled.setScale(1);
     oled.setCursorXY(x, 0); // oled display
     oled.invertText(display_sensor_type == _CO2E);
-    oled.print("CO2e");
+    oled.print(F("CO2"));
     oled.invertText(false);
     oled.setCursorXY(x, 0 + 9); // oled display
     sprintf(s, "%4u", measures[_CO2E].current);
     oled.print(s);
     oled.setCursorXY(x, 0 + 9 + 9); // oled display
-    oled.print("ppm");
+    oled.print(F("ppm"));
 
     oled.setCursorXY(x, 32); // oled display
     oled.invertText(display_sensor_type == _TVOC);
-    oled.print("TVOC");
+    oled.print(F("TVOC"));
     oled.invertText(false);
     oled.setCursorXY(x, 32 + 9); // oled display
     sprintf(s, "%4u", measures[_TVOC].current);
     oled.print(s);
     oled.setCursorXY(x, 32 + 9 + 9); // oled display
-    oled.print("ppb");
+    oled.print(F("ppb"));
 }
 
 void draw_bars()
@@ -155,7 +155,23 @@ void draw_bars()
             oled.fastLineV(x, y, h);
         }
     }
+
+    for(uint8_t i=0;i<12;i++)
+    {
+        oled.dot(21, 3+i*5);
+        oled.dot(41, 3+i*5);
+        oled.dot(61, 3+i*5);
+        oled.dot(81, 3+i*5);
+    }
+
+    // oled.fastLineV(21, 0, 63);
+    // oled.fastLineV(41, 0, 63);
+    // oled.fastLineV(61, 0, 63);
+    // oled.fastLineV(81, 0, 63);
+
+
     oled.rect(0, 0, 100, 63, OLED_STROKE);
+
 
     oled.setScale(1);
     oled.invertText(false);
