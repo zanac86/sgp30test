@@ -51,9 +51,6 @@ void add_new_measure(uint16_t measure_co2, uint16_t measure_tvoc)
 
     measures[_CO2E].input = (measures[_CO2E].input >> 1) + (c >> 1);
     measures[_TVOC].input = (measures[_TVOC].input >> 1) + (t >> 1);
-
-    // measures[_CO2E].input = (c > 9999) ? 9999 : c;
-    // measures[_TVOC].input = (t > 9999) ? 9999 : t;
 }
 
 void prepare_display_samples(uint8_t x)
@@ -73,7 +70,6 @@ void prepare_display_samples(uint8_t x)
     if (x == _CO2E)
     {
         // в co2 нет значений < 400
-
         mn = (mn < 600) ? 400 : mn;
         // окгруление до большей сотни
         mx = ((mx / 100) + 1) * 100;

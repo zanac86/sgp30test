@@ -26,12 +26,13 @@ uint8_t display_mode = DISPLAY_PLOT;
 // читать датчик каждую секунду (написано, что так ему лучше)
 #define INTERVAL_READ_SENSOR 1
 // обновить данные для графиков, там 50 значений
-// если записывать через 30 секунд, то на экране будет 25 минут
-#define INTERVAL_UPDATE_MEASURES 3
+// если записывать через 30 (60) секунд, то на экране будет 25 минут (50 минут)
+// сетка на экране через 5 минут или 10 минут
+#define INTERVAL_UPDATE_MEASURES 30
 // Переключать график CO2 или TVOC
-#define INTERVAL_CHANGE_PLOT 20
+#define INTERVAL_CHANGE_PLOT 10
 // Выводить график или большие цифры
-#define INTERVAL_CHANGE_DISPLAY 10
+#define INTERVAL_CHANGE_DISPLAY 20
 
 // обновить весь экран при переключении на график
 bool need_update_plot = true;
@@ -98,7 +99,7 @@ void setup()
 void print_big_measures()
 {
     char s[6];
-    oled.setCursorXY(0, 10); // oled display
+    oled.setCursorXY(0, 10);
     oled.setScale(2);
     oled.invertText(false);
     oled.print(F("CO2: "));
@@ -107,7 +108,7 @@ void print_big_measures()
     oled.setScale(1);
     oled.print(F("ppm"));
 
-    oled.setCursorXY(0, 40); // oled display
+    oled.setCursorXY(0, 40);
     oled.setScale(2);
     oled.invertText(false);
     oled.print(F("TVOC:"));
@@ -122,24 +123,24 @@ void print_small_measures()
     int x = 104;
     char s[6];
     oled.setScale(1);
-    oled.setCursorXY(x, 0); // oled display
+    oled.setCursorXY(x, 0);
     oled.invertText(display_sensor_type == _CO2E);
     oled.print(F("CO2"));
     oled.invertText(false);
-    oled.setCursorXY(x, 0 + 9); // oled display
+    oled.setCursorXY(x, 0 + 9);
     sprintf(s, "%4u", measures[_CO2E].current);
     oled.print(s);
-    oled.setCursorXY(x, 0 + 9 + 9); // oled display
+    oled.setCursorXY(x, 0 + 9 + 9);
     oled.print(F("ppm"));
 
-    oled.setCursorXY(x, 32); // oled display
+    oled.setCursorXY(x, 32);
     oled.invertText(display_sensor_type == _TVOC);
     oled.print(F("TVOC"));
     oled.invertText(false);
-    oled.setCursorXY(x, 32 + 9); // oled display
+    oled.setCursorXY(x, 32 + 9);
     sprintf(s, "%4u", measures[_TVOC].current);
     oled.print(s);
-    oled.setCursorXY(x, 32 + 9 + 9); // oled display
+    oled.setCursorXY(x, 32 + 9 + 9);
     oled.print(F("ppb"));
 }
 
@@ -164,31 +165,23 @@ void draw_bars()
         oled.dot(81, 3 + i * 5);
     }
 
-    // oled.fastLineV(21, 0, 63);
-    // oled.fastLineV(41, 0, 63);
-    // oled.fastLineV(61, 0, 63);
-    // oled.fastLineV(81, 0, 63);
-
-
+    // рамка вокруг графика
     oled.rect(0, 0, 100, 63, OLED_STROKE);
 
-
+    // вертикальные линии пунктиром - типы через 10 минут
     oled.setScale(1);
     oled.invertText(false);
     oled.setCursorXY(0, 0); // oled display
     oled.print(measures[display_sensor_type].max);
     oled.setCursorXY(0, 64 - 8); // oled display
     oled.print(measures[display_sensor_type].min);
-
-    // oled.rect(100, 0, 127, 63, OLED_STROKE);
 }
 
 void loop()
 {
     EVERY_N_SECONDS(INTERVAL_READ_SENSOR)
     {
-        // First fifteen readings will be
-        // CO2: 400 ppm  TVOC: 0 ppb
+        // Первые 15 секунд CO2: 400 ppm  TVOC: 0 ppb
         update_current_measures_every_1s();
         if (display_mode == DISPLAY_PLOT)
         {
@@ -203,24 +196,28 @@ void loop()
         }
     }
 
+    // переключить большие цифры или график
     EVERY_N_SECONDS(INTERVAL_CHANGE_DISPLAY)
     {
         display_mode = (display_mode == DISPLAY_PLOT) ? DISPLAY_SENS : DISPLAY_PLOT;
         need_update_plot = (display_mode == DISPLAY_PLOT);
     }
 
+    // переключить тип графика
     EVERY_N_SECONDS(INTERVAL_CHANGE_PLOT)
     {
         display_sensor_type = (display_sensor_type == _CO2E) ? _TVOC : _CO2E;
+        need_update_plot = (display_mode == DISPLAY_PLOT);
     }
 
+    // добавить измерение в данные для графика
     EVERY_N_SECONDS(INTERVAL_UPDATE_MEASURES)
     {
         update_measure_data();
         need_update_plot = (display_mode == DISPLAY_PLOT);
     }
 
-    if (need_update_plot)
+    if ((display_mode == DISPLAY_PLOT) && (need_update_plot))
     {
         prepare_display_samples(display_sensor_type);
         oled.clear();
