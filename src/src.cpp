@@ -18,10 +18,11 @@ bool sgp30_connected = false;
 // Тип выводимых данных
 uint8_t display_sensor_type = _CO2E;
 
-// Вывод крупных цифр или графика
-#define DISPLAY_PLOT 0
-#define DISPLAY_SENS 1
-uint8_t display_mode = DISPLAY_PLOT;
+// Вывод графика co2, tvoc или крупных цифр
+#define DISPLAY_PLOT_CO2 0
+#define DISPLAY_PLOT_TVOC 1
+#define DISPLAY_SENSORS 2
+uint8_t display_mode = DISPLAY_SENSORS;
 
 // читать датчик каждую секунду (написано, что так ему лучше)
 #define INTERVAL_READ_SENSOR 1
@@ -29,13 +30,11 @@ uint8_t display_mode = DISPLAY_PLOT;
 // если записывать через 30 (60) секунд, то на экране будет 25 минут (50 минут)
 // сетка на экране через 5 минут или 10 минут
 #define INTERVAL_UPDATE_MEASURES 30
-// Переключать график CO2 или TVOC
-#define INTERVAL_CHANGE_PLOT 10
-// Выводить график или большие цифры
-#define INTERVAL_CHANGE_DISPLAY 20
+// Выводить графики или большие цифры через 10 секунд
+#define INTERVAL_CHANGE_DISPLAY 10
 
-// обновить весь экран при переключении на график
-bool need_update_plot = true;
+// обновить значения маленьких цифр
+bool need_update_plot_numbers = true;
 
 // Read measures. Call every 1 second (exact)
 void update_current_measures_every_1s()
@@ -183,47 +182,41 @@ void loop()
     {
         // Первые 15 секунд CO2: 400 ppm  TVOC: 0 ppb
         update_current_measures_every_1s();
-        if (display_mode == DISPLAY_PLOT)
-        {
-            print_small_measures();
-            oled.update();
-        }
-        if (display_mode == DISPLAY_SENS)
+
+        // каждую секунду выводить значения в режиме больших цифр
+        if (display_mode == DISPLAY_SENSORS)
         {
             oled.clear();
             print_big_measures();
             oled.update();
         }
-    }
-
-    // переключить большие цифры или график
-    EVERY_N_SECONDS(INTERVAL_CHANGE_DISPLAY)
-    {
-        display_mode = (display_mode == DISPLAY_PLOT) ? DISPLAY_SENS : DISPLAY_PLOT;
-        need_update_plot = (display_mode == DISPLAY_PLOT);
-    }
-
-    // переключить тип графика
-    EVERY_N_SECONDS(INTERVAL_CHANGE_PLOT)
-    {
-        display_sensor_type = (display_sensor_type == _CO2E) ? _TVOC : _CO2E;
-        need_update_plot = (display_mode == DISPLAY_PLOT);
+        if ((display_mode == DISPLAY_PLOT_CO2) || (display_mode == DISPLAY_PLOT_TVOC))
+        {
+            print_small_measures();
+            oled.update();
+        }
     }
 
     // добавить измерение в данные для графика
     EVERY_N_SECONDS(INTERVAL_UPDATE_MEASURES)
     {
         update_measure_data();
-        need_update_plot = (display_mode == DISPLAY_PLOT);
     }
 
-    if ((display_mode == DISPLAY_PLOT) && (need_update_plot))
+    // переключить большие цифры или график
+    EVERY_N_SECONDS(INTERVAL_CHANGE_DISPLAY)
     {
-        prepare_display_samples(display_sensor_type);
-        oled.clear();
-        print_small_measures();
-        draw_bars();
-        oled.update();
-        need_update_plot = false;
+        // CO2 -> TVOC -> SENSORS -> CO2 -> TVOC -> SENSORS
+        display_mode = (display_mode == DISPLAY_PLOT_CO2) ? DISPLAY_PLOT_TVOC : ((display_mode == DISPLAY_PLOT_TVOC) ? DISPLAY_SENSORS : DISPLAY_PLOT_CO2);
+        display_sensor_type = (display_mode == DISPLAY_PLOT_CO2) ? _TVOC : _CO2E;
+        if ((display_mode == DISPLAY_PLOT_CO2) || (display_mode == DISPLAY_PLOT_TVOC))
+        {
+            prepare_display_samples(display_sensor_type);
+            oled.clear();
+            print_small_measures();
+            draw_bars();
+            oled.update();
+        }
     }
+
 }
