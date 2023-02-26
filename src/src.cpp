@@ -156,12 +156,12 @@ void draw_bars()
         }
     }
 
-    for(uint8_t i=0;i<12;i++)
+    for (uint8_t i = 0; i < 12; i++)
     {
-        oled.dot(21, 3+i*5);
-        oled.dot(41, 3+i*5);
-        oled.dot(61, 3+i*5);
-        oled.dot(81, 3+i*5);
+        oled.dot(21, 3 + i * 5);
+        oled.dot(41, 3 + i * 5);
+        oled.dot(61, 3 + i * 5);
+        oled.dot(81, 3 + i * 5);
     }
 
     // oled.fastLineV(21, 0, 63);
