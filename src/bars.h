@@ -8,6 +8,7 @@
 // отсчеты через 60 секунд, всего 50 минут
 #define TOTAL_MEASURES 50
 
+// история измерений
 struct SensorsMeasures
 {
     // позиция записи в data
@@ -20,7 +21,7 @@ struct SensorsMeasures
     // текущее значение
     uint16_t current;
 
-    // текущее значение current усреднится с input
+    // текущее значение current усреднится с предыдущим input
     // потом это значение попадет в data
     uint16_t input;
 
@@ -29,6 +30,7 @@ struct SensorsMeasures
     uint16_t data[TOTAL_MEASURES];
 };
 
+// тип данных. используется как индекс в массиве measures[2]
 #define _CO2E 0
 #define _TVOC 1
 

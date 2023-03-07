@@ -26,6 +26,7 @@ void init_measures()
     }
 }
 
+// заносит значение из input в массив истории
 void update_measure_data()
 {
     for (uint8_t x = 0; x < 2; x++)
@@ -36,6 +37,8 @@ void update_measure_data()
     }
 }
 
+// принимает текущие измерения и усредняет с предыдущими значениями
+// ограничивает показания на 9999
 void add_new_measure(uint16_t measure_co2, uint16_t measure_tvoc)
 {
     // от датчика co2e должны быть >=400
@@ -125,6 +128,7 @@ void prepare_display_samples(uint8_t x)
     }
 }
 
+// имитация измерений
 uint16_t fake_measure(uint8_t sensor_type)
 {
     if (sensor_type == _CO2E)

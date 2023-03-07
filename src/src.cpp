@@ -1,9 +1,11 @@
+// https://github.com/sparkfun/SparkFun_SGP30_Arduino_Library
 #include <SparkFun_SGP30_Arduino_Library.h>
-// Click here to get the library: http://librarymanager/All#SparkFun_SGP30
+
 #include <Wire.h>
 #include "everytime.h"
 #include "bars.h"
 
+// https://github.com/GyverLibs/GyverOLED
 // дефайн перед подключением либы - использовать microWire (лёгкая либа для I2C)
 //  #define USE_MICRO_WIRE
 #include <GyverOLED.h>
@@ -15,14 +17,33 @@ SGP30 mySensor; // create an object of the SGP30 class
 // если нашелся датчик
 bool sgp30_connected = false;
 
-// Тип выводимых данных
 uint8_t display_sensor_type = _CO2E;
+// Тип выводимых данных
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0])) ///< Generic macro for obtaining number of elements of an array
 
 // Вывод графика co2, tvoc или крупных цифр
 #define DISPLAY_PLOT_CO2 0
 #define DISPLAY_PLOT_TVOC 1
 #define DISPLAY_SENSORS 2
+
+// список режимов по порядку
+uint8_t display_mode_list[] = {
+    DISPLAY_SENSORS,
+    DISPLAY_PLOT_CO2,
+    DISPLAY_PLOT_TVOC,
+    DISPLAY_PLOT_CO2,
+    DISPLAY_PLOT_TVOC,
+};
+
+// индекс текущего режима в списке
+uint8_t display_mode_index = 0;
+
+// текущий режим
 uint8_t display_mode = DISPLAY_SENSORS;
+
+// количество режимов отображения
+const uint8_t display_mode_count = ARRAY_SIZE(display_mode_list);
 
 // читать датчик каждую секунду (написано, что так ему лучше)
 #define INTERVAL_READ_SENSOR 1
@@ -41,13 +62,21 @@ void update_current_measures_every_1s()
 {
     if (sgp30_connected)
     {
+        // если датчик есть, то измерить
         mySensor.measureAirQuality();
         add_new_measure(mySensor.CO2, mySensor.TVOC);
     }
     else
     {
+        // случайные значения
         add_new_measure(fake_measure(_CO2E), fake_measure(_TVOC));
     }
+    /*
+    В uart будует отправляться строки с текущими измерениями
+    437012 CO2=419 TVOC=96
+    438012 CO2=429 TVOC=100
+    439012 CO2=424 TVOC=91
+    */
     char s[50];
     sprintf(s, "%lu CO2=%u TVOC=%u",
             millis(),
@@ -60,41 +89,54 @@ void setup()
 {
     delay(100);
     Serial.begin(9600);
+
+    // инициализация i2c
     Wire.begin();
 
+    // экран
     oled.init();
+    oled.clear();
+    oled.setScale(1);
+    oled.setCursorXY(10, 8);
+    oled.print(__DATE__);
+    oled.setCursorXY(10, 16);
+    oled.print(__TIME__);
+    oled.update();
+    delay(400);
     oled.clear();
     oled.update();
 
+    // подготовка истории измерений
     init_measures();
 
     // Initialize sensor
-    if (mySensor.begin() == false)
+    sgp30_connected = mySensor.begin();
+    if (!sgp30_connected)
     {
         oled.clear();
-        oled.setCursor(10, 10); // oled display
+        oled.setCursorXY(10, 10); // oled display
         oled.setScale(2);
         oled.print(F("NO SGP30"));
         oled.update();
         Serial.println(F("No SGP30 Detected. Check connections."));
         sgp30_connected = false;
-        delay(1000);
+        delay(5000);
     }
-    else
-    {
-        sgp30_connected = true;
-    }
+
     // Initializes sensor for air quality readings
     // measureAirQuality should be called in one second increments after a call to initAirQuality
     if (sgp30_connected)
     {
+        // если датчик есть, то начать измерения,
+        // следующие чтения должны быть через 1 секунду
         mySensor.initAirQuality();
         delay(1000); // Wait 1 second
     }
-
+    // чтение измерений
     update_current_measures_every_1s();
 }
 
+// выводит большие цифры на весь экран без графиков
 void print_big_measures()
 {
     char s[6];
@@ -117,6 +159,7 @@ void print_big_measures()
     oled.print(F("ppb"));
 }
 
+// выводит маленькие цифры справа на графиках
 void print_small_measures()
 {
     int x = 104;
@@ -143,8 +186,10 @@ void print_small_measures()
     oled.print(F("ppb"));
 }
 
+// рисует графики
 void draw_bars()
 {
+    // столбики графика
     uint16_t h = 64 - 1;
     for (uint8_t i = 0; i < TOTAL_MEASURES; i++)
     {
@@ -156,6 +201,7 @@ void draw_bars()
         }
     }
 
+    // вертикальные линии пунктиром - через 15 минут
     for (uint8_t i = 0; i < 12; i++)
     {
         oled.dot(21, 3 + i * 5);
@@ -167,7 +213,7 @@ void draw_bars()
     // рамка вокруг графика
     oled.rect(0, 0, 100, 63, OLED_STROKE);
 
-    // вертикальные линии пунктиром - типы через 10 минут
+    // слева на графике минимум и максимум
     oled.setScale(1);
     oled.invertText(false);
     oled.setCursorXY(0, 0); // oled display
@@ -183,15 +229,16 @@ void loop()
         // Первые 15 секунд CO2: 400 ppm  TVOC: 0 ppb
         update_current_measures_every_1s();
 
-        // каждую секунду выводить значения в режиме больших цифр
         if (display_mode == DISPLAY_SENSORS)
         {
+            // каждую секунду выводить значения в режиме больших цифр
             oled.clear();
             print_big_measures();
             oled.update();
         }
         if ((display_mode == DISPLAY_PLOT_CO2) || (display_mode == DISPLAY_PLOT_TVOC))
         {
+            // на графике обновить маленькие цифры - текущие измерения
             print_small_measures();
             oled.update();
         }
@@ -200,17 +247,21 @@ void loop()
     // добавить измерение в данные для графика
     EVERY_N_SECONDS(INTERVAL_UPDATE_MEASURES)
     {
+        // добавляет текущее измерение, усредненное с предыдущим в историю
         update_measure_data();
     }
 
     // переключить большие цифры или график
     EVERY_N_SECONDS(INTERVAL_CHANGE_DISPLAY)
     {
-        // CO2 -> TVOC -> SENSORS -> CO2 -> TVOC -> SENSORS
-        display_mode = (display_mode == DISPLAY_PLOT_CO2) ? DISPLAY_PLOT_TVOC : ((display_mode == DISPLAY_PLOT_TVOC) ? DISPLAY_SENSORS : DISPLAY_PLOT_CO2);
-        display_sensor_type = (display_mode == DISPLAY_PLOT_CO2) ? _TVOC : _CO2E;
+        // выбираем следующий режим по индексу из списка
+        // индекс измениться, когда снова сюда попадем
+        display_mode_index = (display_mode_index + 1) % display_mode_count;
+        display_mode = display_mode_list[display_mode_index];
+        display_sensor_type = (display_mode == DISPLAY_PLOT_CO2) ? _CO2E : _TVOC;
         if ((display_mode == DISPLAY_PLOT_CO2) || (display_mode == DISPLAY_PLOT_TVOC))
         {
+            // если режим с графиками, то очистить экран и нарисовать график и маленькие цифры
             prepare_display_samples(display_sensor_type);
             oled.clear();
             print_small_measures();
@@ -218,5 +269,4 @@ void loop()
             oled.update();
         }
     }
-
 }
