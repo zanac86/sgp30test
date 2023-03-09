@@ -20,6 +20,8 @@ bool sgp30_connected = false;
 uint8_t display_sensor_type = _CO2E;
 // Тип выводимых данных
 
+int buzzer = 10;
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0])) ///< Generic macro for obtaining number of elements of an array
 
 // Вывод графика co2, tvoc или крупных цифр
@@ -105,6 +107,14 @@ void setup()
     delay(400);
     oled.clear();
     oled.update();
+
+  pinMode(buzzer, OUTPUT);
+  tone(buzzer, 400, 100);
+  delay(100);
+  tone(buzzer, 1000, 100);
+  delay(100);
+  tone(buzzer, 400, 100);
+  delay(200);
 
     // подготовка истории измерений
     init_measures();
