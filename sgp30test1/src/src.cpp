@@ -27,8 +27,8 @@ int buzzer = 10;
 uint8_t blink = 0;
 uint8_t alarm = 0;
 uint8_t alarm_active = 0;
-// следующий бзз будет через 5 минут
-#define ALARM_DELAY_MS 300000
+// следующий бзз будет через 10 минут
+#define ALARM_DELAY_MS 600000
 uint32_t alarm_time_delay_ms = 0;
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0])) ///< Generic macro for obtaining number of elements of an array
@@ -60,7 +60,7 @@ const uint8_t display_mode_count = ARRAY_SIZE(display_mode_list);
 // сетка на экране через 5 минут или 10 минут
 #define INTERVAL_UPDATE_MEASURES 30
 // Выводить графики или большие цифры через 10 секунд
-#define INTERVAL_CHANGE_DISPLAY 10
+#define INTERVAL_CHANGE_DISPLAY 5
 
 // обновить значения маленьких цифр
 bool need_update_plot_numbers = true;
@@ -182,13 +182,12 @@ void sound_buzzer_alarm()
     alarm_time_delay_ms = millis() + ALARM_DELAY_MS;
 
     pinMode(buzzer, OUTPUT);
-    tone(buzzer, 800, 40);
+    tone(buzzer, 1000, 40);
     delay(50);
-    tone(buzzer, 600, 40);
+    tone(buzzer, 1600, 40);
     delay(50);
-    tone(buzzer, 400, 40);
+    tone(buzzer, 1800, 40);
     delay(50);
-
 }
 
 // выводит большие цифры желтым цветов на графиком
@@ -240,10 +239,10 @@ void draw_bars()
     // вертикальные линии пунктиром - через 15 минут
     for (uint8_t i = 0; i < 9; i++)
     {
-        oled.dot(x0 + 21, 17 + i * 5);
-        oled.dot(x0 + 41, 17 + i * 5);
-        oled.dot(x0 + 61, 17 + i * 5);
-        oled.dot(x0 + 81, 17 + i * 5);
+        oled.dot(x0 + 21, 19 + i * 5);
+        oled.dot(x0 + 41, 19 + i * 5);
+        oled.dot(x0 + 61, 19 + i * 5);
+        oled.dot(x0 + 81, 19 + i * 5);
     }
 
     // рамка вокруг графика
@@ -313,10 +312,12 @@ void loop()
             // если режим с графиками, то очистить экран и нарисовать график и маленькие цифры
             prepare_display_samples(display_sensor_type);
             oled.clear();
-            // print_small_measures();
+            print_small_measures();
             draw_bars();
             oled.update();
         }
+        // alarm = 1;
+        // alarm_active=0;
         sound_buzzer_alarm();
     }
 }

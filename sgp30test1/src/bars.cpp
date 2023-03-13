@@ -158,12 +158,12 @@ uint8_t test_air_quality_values(uint16_t co2, uint16_t tvoc)
 
     Проветрить надо при co2>600 или tvoc>300
     */
-    if ((co2 < 600) && (tvoc < 100))
+    if ((co2 < 800) && (tvoc < 220))
     {
         return AIR_GOOD;
     }
 
-    if ((co2 < 1100) && (tvoc < 300))
+    if ((co2 < 1400) && (tvoc < 600))
     {
         return AIR_FAIR;
     }
